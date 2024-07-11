@@ -32,7 +32,6 @@ def atlas_surface_plotter(atlas_file, values, z_threshold=1.5, cmap='cold_hot'):
 
     Notes:
     ------
-    - The parcellation must be 4D, i.e., each 3D volume is a binary mask for a parcel.
     - Uses MNI152 template for visualization.
     - Requires Nilearn library for image handling and plotting.
     """
@@ -110,11 +109,10 @@ def atlas_volume_plotter(atlas_file, values, z_threshold=1.5, display_mode='orth
     Returns:
     -------
     None
-        Displays the 4D atlas plot.
+        Displays the atlas volume plot.
 
     Notes:
     ------
-    - The parcellation must be 4D, i.e., each 3D volume is a binary mask for a parcel.
     - Uses MNI152 template for visualization.
     - Requires Nilearn library for image handling and plotting.
     """
