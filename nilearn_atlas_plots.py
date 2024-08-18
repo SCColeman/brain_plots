@@ -6,13 +6,12 @@ Plot values in parcellated brain regions, copy and paste into script.
 """
 
 from nilearn import plotting, image, datasets
-from nibabel import nifti1, Nifti1Image
+from nibabel import Nifti1Image
 import numpy as np
-from scipy.stats import zscore
 
-def atlas_surface_plotter(atlas_file, values, z_threshold=1.5, cmap='cold_hot'):
+def atlas_surface_plotter(atlas_file, values, threshold=0, cmap='cold_hot', symmetric_cbar=True):
     """
-    Plots z-scored scalar values in parcellation, overlaid on fsaverage5 surface.
+    Plots values in parcellation, overlaid on fsaverage5 surface.
 
     Parameters:
     ----------
@@ -20,8 +19,8 @@ def atlas_surface_plotter(atlas_file, values, z_threshold=1.5, cmap='cold_hot'):
         Path to the atlas file in Nifti format.
     values : array-like
         List or array of values corresponding to each region in the atlas.
-    z_threshold : float, optional
-        Threshold value for displaying z-scores (default is 1.5).
+    threshold : float
+        Threshold value for displaying values.
     cmap : str, optional
         Colormap to use for displaying the values (default is 'cold_hot').
 
@@ -35,11 +34,6 @@ def atlas_surface_plotter(atlas_file, values, z_threshold=1.5, cmap='cold_hot'):
     - Uses MNI152 template for visualization.
     - Requires Nilearn library for image handling and plotting.
     """
-    
-    # z-score values
-    values = zscore(values)
-    vmax = 1.3 * np.max(np.abs(values))
-    vmin = -vmax
     
     # load fsaverage and atlas   
     mni = datasets.load_mni152_template()
@@ -69,8 +63,9 @@ def atlas_surface_plotter(atlas_file, values, z_threshold=1.5, cmap='cold_hot'):
         atlas_new = np.zeros(np.shape(atlas_data))
 
         # place values in each parcel region
+        indices = np.unique(atlas_data[atlas_data>0])
         for reg in range(len(values)):
-            reg_mask = atlas_data == reg
+            reg_mask = atlas_data == indices[reg]
             atlas_new[reg_mask] = values[reg]
 
         # make image from new atlas data
@@ -81,17 +76,28 @@ def atlas_surface_plotter(atlas_file, values, z_threshold=1.5, cmap='cold_hot'):
 
     # plot interpolated image on surface
     fig = plotting.plot_img_on_surf(img_interp, views=['lateral', 'medial'],
-                              hemispheres=['left', 'right'], darkness=0.7,
-                              colorbar=False, cmap=cmap, bg_on_data=True,
-                              threshold=z_threshold, symmetric_cbar=True,
-                              surf_mesh='fsaverage5', inflate=False, 
-                              vmin=vmin, vmax=vmax)
+                              hemispheres=['left', 'right'],
+                              colorbar=True, cmap=cmap, bg_on_data=True,
+                              threshold=threshold, symmetric_cbar=symmetric_cbar,
+                              surf_mesh='fsaverage5', inflate=False)
     
     return fig
 
-def atlas_volume_plotter(atlas_file, values, z_threshold=1.5, display_mode='ortho', cmap='cold_hot'):
+### example usage, AAL atlas (3D)
+atlas = datasets.fetch_atlas_aal()
+labels = atlas.labels
+values = np.random.randn(len(labels))
+atlas_surface_plotter(atlas.maps, values)
+
+### example usage, glasser atlas (4D)
+atlas_file = '/d/gmi/1/sebastiancoleman/atlases/Glasser52_binary_space-MNI152NLin6_res-8x8x8.nii.gz';
+values= np.random.randn(52)
+atlas_surface_plotter(atlas_file, values)
+
+
+def atlas_volume_plotter(atlas_file, values, threshold=0, display_mode='ortho', cmap='cold_hot', symmetric_cbar=True):
     """
-    Plots z-scored scalar values in parcellation, overlaid on MNI brain template.
+    Plots values in parcellation, overlaid on MNI brain template.
 
     Parameters:
     ----------
@@ -99,8 +105,8 @@ def atlas_volume_plotter(atlas_file, values, z_threshold=1.5, display_mode='orth
         Path to the atlas file in Nifti format.
     values : array-like
         List or array of values corresponding to each region in the atlas.
-    z_threshold : float, optional
-        Threshold value for displaying z-scores (default is 1.5).
+    threshold : float, optional
+        Threshold value for displaying values (default is 0).
     display_mode : {'ortho', 'x', 'y', 'z'}, optional
         Specifies the direction of the slices ('ortho' for three views or 'x', 'y', 'z' for tiled single view).
     cmap : str, optional
@@ -117,11 +123,6 @@ def atlas_volume_plotter(atlas_file, values, z_threshold=1.5, display_mode='orth
     - Requires Nilearn library for image handling and plotting.
     """
     
-    # z-score values
-    values = zscore(values)
-    vmax = 1.3 * np.max(np.abs(values))
-    vmin = -vmax
-    
     # load fsaverage and atlas   
     mni = datasets.load_mni152_template()
     atlas_img = image.load_img(atlas_file)
@@ -150,8 +151,9 @@ def atlas_volume_plotter(atlas_file, values, z_threshold=1.5, display_mode='orth
         atlas_new = np.zeros(np.shape(atlas_data))
 
         # place values in each parcel region
+        indices = np.unique(atlas_data[atlas_data>0])
         for reg in range(len(values)):
-            reg_mask = atlas_data == reg
+            reg_mask = atlas_data == indices[reg]
             atlas_new[reg_mask] = values[reg]
 
         # make image from new atlas data
@@ -161,6 +163,17 @@ def atlas_volume_plotter(atlas_file, values, z_threshold=1.5, display_mode='orth
     img_interp = image.resample_img(new_img, mni.affine)
     
     # plot the interpolated image
-    plotting.plot_stat_map(img_interp, display_mode=display_mode, threshold=z_threshold, 
-                           vmin=vmin, vmax=vmax, symmetric_cbar=True, annotate=False,
+    plotting.plot_stat_map(img_interp, display_mode=display_mode, threshold=threshold, 
+                           symmetric_cbar=symmetric_cbar, annotate=False,
                            draw_cross=False)
+    
+### example usage, AAL atlas (3D)
+atlas = datasets.fetch_atlas_aal()
+labels = atlas.labels
+values = np.random.randn(len(labels))
+atlas_volume_plotter(atlas.maps, values)
+
+### example usage, glasser atlas (4D)
+atlas_file = '/d/gmi/1/sebastiancoleman/atlases/Glasser52_binary_space-MNI152NLin6_res-8x8x8.nii.gz';
+values= np.random.randn(52)
+atlas_volume_plotter(atlas_file, values)
