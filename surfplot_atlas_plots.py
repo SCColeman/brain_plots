@@ -13,7 +13,7 @@ import nibabel as nib
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 
-def atlas_surface_plotter2(atlas_file, values, threshold=0, cmap='YlOrRd_r'):
+def atlas_surface_plotter(atlas_file, values, threshold=0, cmap='YlOrRd_r', symmetric_cbar=False):
     
     # make volume image of strength  
     atlas_img = image.load_img(atlas_file)
@@ -54,24 +54,28 @@ def atlas_surface_plotter2(atlas_file, values, threshold=0, cmap='YlOrRd_r'):
     nib.save(new_img, '/d/gmi/1/sebastiancoleman/fancy_plot_dir/fig.nii.gz')
 
     # transform to fsaverage surface
-    fslr = transforms.mni152_to_fslr('/d/gmi/1/sebastiancoleman/fancy_plot_dir/fig.nii.gz')
+    fslr = transforms.mni152_to_fsaverage('/d/gmi/1/sebastiancoleman/fancy_plot_dir/fig.nii.gz')
     lh_data, rh_data = fslr[0].agg_data(), fslr[1].agg_data()
-    lh_data = utils.threshold(lh_data, threshold, two_sided=True)
-    rh_data = utils.threshold(rh_data, threshold, two_sided=True)
+    lh_data = utils.threshold(lh_data, threshold, two_sided=symmetric_cbar)
+    rh_data = utils.threshold(rh_data, threshold, two_sided=symmetric_cbar)
 
     # plot
-    surfaces = fetch_fslr()
-    lh, rh = surfaces['inflated']
-    p = Plot(surf_lh=lh, surf_rh=rh)
-    vmax = np.max(np.abs(values))
-    p.add_layer({'left': lh_data, 'right': rh_data}, color_range=[-vmax, vmax], cmap=cmap, cbar=False)
+    surfaces = datasets.fetch_fsaverage()
+    lh, rh = surfaces['pial']
+    p = Plot(surf_lh=lh, surf_rh=rh, brightness=0.6)
+    if symmetric_cbar:
+        vmax = np.max(np.abs(values))
+        p.add_layer({'left': lh_data, 'right': rh_data}, color_range=[-vmax, vmax], cmap=cmap, cbar=False)
+    else:
+        vmax = np.max(values)
+        vmin = np.min(values)
+        p.add_layer({'left': lh_data, 'right': rh_data}, color_range=[vmin, vmax], cmap=cmap, cbar=False)
     fig = p.build()
     fig.show()
     
     return fig
 
-
-def construct_mpl_surf_image(surf_fig, values, figsize=(5,4), cmap='YlOrRd_r', symmetric=True, cbar_label='Brain Activity'):
+def construct_mpl_surf_image(surf_fig, values, figsize=(5,4), cmap='YlOrRd_r', symmetric=False, cbar_label='Brain Activity'):
 
     # extract image data
     canvas = surf_fig.canvas
@@ -90,7 +94,7 @@ def construct_mpl_surf_image(surf_fig, values, figsize=(5,4), cmap='YlOrRd_r', s
     imdata_cropped = imdata[nonwhite_row][:, nonwhite_col]
     
     # construct plot
-    fig = plt.figure(figsize=(5, 4))
+    fig = plt.figure(figsize=figsize)
     ax = fig.add_axes([0.1, 0.2, 0.8, 0.7])  # [left, bottom, width, height]
     cax = fig.add_axes([0.25, 0.15, 0.5, 0.03])  # [left, bottom, width, height]
     
@@ -115,7 +119,9 @@ def construct_mpl_surf_image(surf_fig, values, figsize=(5,4), cmap='YlOrRd_r', s
 atlas_file = '/d/gmi/1/sebastiancoleman/atlases/Glasser52_binary_space-MNI152NLin6_res-8x8x8.nii.gz';
 values= np.random.randn(52)
 
-fig = atlas_surface_plotter2(atlas_file, values, threshold=0.5, cmap='cold_hot')
+fig = atlas_surface_plotter(atlas_file, values, threshold=0.5, cmap='coolwarm')
 fig, ax, cax = construct_mpl_surf_image(fig, values, figsize=(6,5), 
-                                        cmap='cold_hot', symmetric=True, 
+                                        cmap='coolwarm', symmetric=False, 
                                         cbar_label='Random Values')
+
+
