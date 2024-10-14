@@ -115,6 +115,28 @@ def construct_mpl_surf_image(surf_fig, values, figsize=(5,4), cmap='YlOrRd_r', s
     
     return fig, ax, cax
 
+def insert_surf_into_ax(surf_fig, target_ax):
+    
+    # extract image data
+    canvas = surf_fig.canvas
+    canvas.draw()
+    imflat = np.frombuffer(canvas.buffer_rgba(), dtype='uint8')
+    imdata = imflat.reshape(*reversed(canvas.get_width_height()), 4)
+    imdata = imdata[:, :, :3]
+    plt.close()
+    
+    # remove white space
+    nonwhite_pix = (imdata != 255).any(-1)
+    nonwhite_row = nonwhite_pix.any(1)
+    nonwhite_row[::4] = True
+    nonwhite_col = nonwhite_pix.any(0)
+    nonwhite_col[::4] = True
+    imdata_cropped = imdata[nonwhite_row][:, nonwhite_col]
+    
+    # insert into plot
+    target_ax.imshow(imdata_cropped)
+    target_ax.axis("off")
+
 # example usage, glasser atlas (4D)
 atlas_file = '/d/gmi/1/sebastiancoleman/atlases/Glasser52_binary_space-MNI152NLin6_res-8x8x8.nii.gz';
 values= np.random.randn(52)
